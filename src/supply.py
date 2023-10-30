@@ -2,7 +2,6 @@ import geopandas
 import numpy as np
 import pandas as pd
 
-import constants as c
 from crs import Albers_Equal_Area_Russia
 
 

@@ -4,13 +4,14 @@ import folium
 import geopandas
 import streamlit as st
 from streamlit_folium import st_folium
+from src.obj_strg_tools import S3
 
 st.set_page_config(page_title="Retail Gravitation", page_icon="🛒")
 st.title("🏪 Retail Gravitation Test App")
 
-with open("data/cities.json", encoding="utf-8") as f:
-    cities = json.load(f)
-city = st.selectbox("Выберите город:", cities)
+minio = S3(bucket_name="retail-gravitation")
+cities = json.load(minio.get_object_from_storage("cities.json"))
+city = st.selectbox("Выберите город:", list(cities)[:1]) # скорректировать при добавлении других городов
 area = st.number_input(
     "Введите площадь магазина", min_value=25, max_value=5000, value=100
 )
@@ -52,3 +53,6 @@ if f"{lng} {lat}" not in st.session_state["markers"]:
     st.session_state["markers"][f"{lng} {lat}"] = (store_name, area)
     st.session_state["store_number"] += 1
 st.write(st.session_state.markers)
+
+number_of_residents = geopandas.read_parquet(minio.get_object_from_storage("krasnodar-ab-residents.parquet"))
+number_of_residents

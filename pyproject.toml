@@ -16,6 +16,8 @@ mapclassify = "^2.6.0"
 pyrosm = "^0.6.1"
 shapely = "1.8.5"
 prefect = "^2.13.7"
+python-dotenv = "^1.0.0"
+s3fs = "^2023.10.0"
 
 
 [build-system]

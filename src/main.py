@@ -1,26 +1,30 @@
 import json
 import os
 
-import constants as c
 import geopandas
 import numpy as np
 import pyrosm
-from crs import Albers_Equal_Area_Russia
+import s3fs
+from dotenv import load_dotenv
+from geopandas import GeoDataFrame
 from prefect import flow, task
-from supply import add_user_shops, func, measure_market_share
+
+import constants as c
+from crs import Albers_Equal_Area_Russia
 
 
 @task(retries=3, retry_delay_seconds=5)
-def get_osm_data(city: dict, local_prefix: str = "data") -> None:
+def get_osm_data(city: dict, local_prefix: str = "data") -> str:
     """Загружаем данные OpenStreetMap, обрезаем дамп по границе указанного города
     и оставляем только те объекты OSM, которые нас интересуют."""
     os.system(
         f"src/osm_get_data.sh {city['region']} {local_prefix} {city['name']} {city['osm_id']}"
     )
+    return f"{local_prefix}/{city['name']}/{city['name']}-filtered.osm.pbf"
 
 
 @task(log_prints=True)
-def process_apartment_buildings_data(fp: str) -> geopandas.GeoDataFrame:
+def process_apartment_buildings_data(fp: str) -> GeoDataFrame:
     """Обрабатываем информацию по жилым многоквартирным домам для получения
     ориентировочной численности жителей."""
     gdf = geopandas.read_file(fp)
@@ -53,7 +57,7 @@ def process_apartment_buildings_data(fp: str) -> geopandas.GeoDataFrame:
 
 
 @task
-def calculate_stores_area(fp: str) -> geopandas.GeoDataFrame:
+def calculate_stores_area(fp: str) -> GeoDataFrame:
     """Вычисляем площадь каждого магазина города, как часть площади здания в котором
     он располагается. Логика определения площади следующая:
     1. Если в данных OSM геометрия магазина представлена полигоном, считаем, что
@@ -96,25 +100,28 @@ def calculate_stores_area(fp: str) -> geopandas.GeoDataFrame:
 @flow(name="Retail Gravitation", log_prints=True)
 def main():
     """"""
-    with open("data/cities.json", encoding="utf-8") as f:
+    load_dotenv()
+    minio = s3fs.S3FileSystem(
+        key=os.getenv("S3_KEY"),
+        secret=os.getenv("S3_SECRET"),
+        endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+    )
+    BUCKET = "retail-gravitation"
+
+    with minio.open(f"{BUCKET}/cities.json") as f:
         cities = json.load(f)
+    city = cities["Краснодар"]
+    osm_data = get_osm_data(city)
+    with minio.open(f"{BUCKET}/{city['apartment_buildings_information']}") as f:
+        number_of_residents = process_apartment_buildings_data(f)
+    city_shops_data = calculate_stores_area(osm_data)
 
-    get_osm_data(cities["Краснодар"])
-    rsdnts = process_apartment_buildings_data(
-        "data/myhouse_RU-CITY-016_points_matched.geojson"
+    number_of_residents.to_parquet(
+        f"s3://{BUCKET}/{city['name']}-ab-residents.parquet", filesystem=minio
     )
-    city_shops = calculate_stores_area(
-        "data/krasnodar/krasnodar-shops-buildings.osm.pbf"
+    city_shops_data.to_parquet(
+        f"s3://{BUCKET}/{city['name']}-shops.parquet", filesystem=minio
     )
-
-    user_input = {
-        "38.98086547851563 45.2352504759637": ["Новый магазин 1", 100],
-        "39.01481151580811 45.07055046636354": ["Новый магазин 2", 50],
-        "39.00846004486085 45.06585248027519": ["Новый магазин 3", 350],
-    }
-    stores = add_user_shops(city_shops, user_input)
-    result = measure_market_share(rsdnts, stores)
-    print(func(result))
 
 
 if __name__ == "__main__":

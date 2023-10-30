@@ -15,11 +15,11 @@ city_prefix=$local_prefix/$city_name
 city_boundary=$city_prefix/$city_name-boundary.osm
 city_osm_data=$city_prefix/$city_name.osm.pbf
 mkdir -p $city_prefix
-osmium getid -r -t $region_osm_data r$city_id -o $city_boundary
-osmium extract -p $city_boundary $region_osm_data -o $city_osm_data
+osmium getid -r -t $region_osm_data r$city_id -o $city_boundary --overwrite
+osmium extract -p $city_boundary $region_osm_data -o $city_osm_data --overwrite
 
 echo Filtering ${city_name^} OSM data by tags: shop, building...
 osmium tags-filter $city_osm_data \
     shop \
     building \
-    -o $city_prefix/$city_name-shops-buildings.osm.pbf
+    -o $city_prefix/$city_name-filtered.osm.pbf --overwrite
