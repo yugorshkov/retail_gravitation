@@ -24,10 +24,10 @@ def get_osm_data(city: dict, local_prefix: str = "data") -> str:
 
 
 @task(log_prints=True)
-def process_apartment_buildings_data(fp: str) -> GeoDataFrame:
+def process_apartment_buildings_data(filename: str) -> GeoDataFrame:
     """Обрабатываем информацию по жилым многоквартирным домам для получения
     ориентировочной численности жителей."""
-    gdf = geopandas.read_file(fp)
+    gdf = geopandas.read_file(filename)
     gdf = gdf[["HOUSE_ID", "RMC", "RMC_LIVE", "INHAB", "geometry"]]
 
     gdf = gdf.replace({"": np.nan})
@@ -57,7 +57,7 @@ def process_apartment_buildings_data(fp: str) -> GeoDataFrame:
 
 
 @task
-def calculate_stores_area(fp: str) -> GeoDataFrame:
+def calculate_stores_area(filename: str) -> GeoDataFrame:
     """Вычисляем площадь каждого магазина города, как часть площади здания в котором
     он располагается. Логика определения площади следующая:
     1. Если в данных OSM геометрия магазина представлена полигоном, считаем, что
@@ -70,7 +70,7 @@ def calculate_stores_area(fp: str) -> GeoDataFrame:
         коэффициент доли площади магазина в здании:
         - SUPERMARKET_AREA_PART для супермаркетов;
         - CONVENIENCE_AREA_PART для небольших магазинов у дома."""
-    osm = pyrosm.OSM(fp)
+    osm = pyrosm.OSM(filename)
     buildings = osm.get_buildings()
     buildings = buildings[["id", "geometry"]]
     shops = osm.get_pois(custom_filter={"shop": ["supermarket", "convenience"]})
@@ -97,9 +97,10 @@ def calculate_stores_area(fp: str) -> GeoDataFrame:
     return store_areas
 
 
-@flow(name="Retail Gravitation", log_prints=True)
+@flow(name="Retail Gravitation")
 def main():
-    """"""
+    """Основной поток получения данных из различных источников, последующей обработки
+    и загрузки в хранилище."""
     load_dotenv()
     minio = s3fs.S3FileSystem(
         key=os.getenv("S3_KEY"),

@@ -1,0 +1,26 @@
+{
+    "Краснодар": {
+        "name": "krasnodar",
+        "osm_id": "269701",
+        "region": "south",
+        "apartment_buildings_information": "myhouse_RU-CITY-016_points_matched.geojson"
+    },
+    "Новороссийск": {
+        "name": "novorossiysk",
+        "osm_id": "1477110",
+        "region": "south",
+        "apartment_buildings_information": ""
+    },
+    "Армавир": {
+        "name": "armavir",
+        "osm_id": "3476238",
+        "region": "south",
+        "apartment_buildings_information": ""
+    },
+    "Ростов-на-Дону": {
+        "name": "rostov",
+        "osm_id": "1285772",
+        "region": "south",
+        "apartment_buildings_information": ""
+    }
+}

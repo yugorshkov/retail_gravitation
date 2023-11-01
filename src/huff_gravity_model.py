@@ -1,11 +1,13 @@
 import geopandas
 import numpy as np
 import pandas as pd
+from geopandas import GeoDataFrame
 
-from crs import Albers_Equal_Area_Russia
+from src.crs import Albers_Equal_Area_Russia
 
 
-def add_user_shops(city_shops: geopandas.GeoDataFrame, user_input: dict):
+def add_user_shops(city_shops: GeoDataFrame, user_input: dict) -> GeoDataFrame:
+    """"""
     df = pd.DataFrame(
         {
             "name": [user_input[coords][0] for coords in user_input],
@@ -20,7 +22,7 @@ def add_user_shops(city_shops: geopandas.GeoDataFrame, user_input: dict):
     return shops
 
 
-def measure_market_share(residents, shops):
+def huff_gravity_model(residents: GeoDataFrame, shops: GeoDataFrame) -> GeoDataFrame:
     gdf = shops.sjoin(residents)
     gdf = gdf.drop("index_right", axis=1).reset_index(drop=True)
     gdf["dist"] = gdf.distance(gdf["coords"])
@@ -31,11 +33,11 @@ def measure_market_share(residents, shops):
     return gdf
 
 
-def func(gdf):
+def expected_number_of_consumers(gdf: GeoDataFrame):
     gdf = gdf[gdf["shop_id"].isna()]
     gdf["traffic"] = (gdf["INHAB"] * gdf["marketshare"]).astype("int")
     gdf.to_crs("EPSG:4326", inplace=True)
-    gdf = gdf.groupby(["name", "geometry", "store_area"], as_index=False).agg(
+    gdf = gdf.groupby(["name", "store_area"], as_index=False).agg(
         {"traffic": "sum"}
     )
     return gdf
