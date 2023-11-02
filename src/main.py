@@ -109,7 +109,7 @@ def main():
     )
     BUCKET = "retail-gravitation"
 
-    with minio.open(f"{BUCKET}/cities.json") as f:
+    with open("cities.json") as f:
         cities = json.load(f)
     city = cities["Краснодар"]
     osm_data = get_osm_data(city)
