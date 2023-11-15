@@ -34,11 +34,26 @@ def get_city_data(city: str, data_type: str, _s3: s3fs.S3FileSystem) -> GeoDataF
     return gdf
 
 
+def update_user_data():
+    user_markers = list(st.session_state["markers"])
+    edited_rows = st.session_state["user_input"]["edited_rows"]
+    for row in edited_rows:
+        k = user_markers[int(row)]
+        st.session_state["markers"][k].update(edited_rows[row])
+
+
 def main():
     if "markers" not in st.session_state:
         st.session_state["markers"] = {}
     if "store_number" not in st.session_state:
         st.session_state["store_number"] = 1
+
+    load_dotenv()
+    minio = s3fs.S3FileSystem(
+        key=os.getenv("S3_KEY"),
+        secret=os.getenv("S3_SECRET"),
+        endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+    )
 
     with open("cities.json") as f:
         cities = json.load(f)
@@ -72,44 +87,46 @@ def main():
     col1, col2 = st.columns(2)
     with col1:
         out = st_folium(m, width=725, feature_group_to_add=fg)
-        # out
-
     with col2:
-        df = pd.DataFrame(
-            st.session_state["markers"].values(), index=st.session_state["markers"]
-        )
+        df = pd.DataFrame(st.session_state["markers"].values())
         config = {
-            "name": "Название магазина",
-            "area": st.column_config.NumberColumn(
+            "name": st.column_config.TextColumn("Название магазина", max_chars=20),
+            "store_area": st.column_config.NumberColumn(
                 "Площадь, м2", min_value=25, max_value=1000
             ),
         }
-        st.data_editor(df, column_config=config, use_container_width=True, key="user_input")
-        st.session_state["user_input"]
+        result = st.data_editor(
+            df,
+            use_container_width=True,
+            hide_index=False,
+            column_order=['name', 'store_area'],
+            column_config=config,
+            key="user_input",
+            on_change=update_user_data,
+        )
 
-    store_name = f"Новый магазин {st.session_state['store_number']}"
-    geohash = gh.encode(*out["last_clicked"].values(), 9)
-    if geohash not in st.session_state["markers"]:
-        st.session_state["markers"][geohash] = {"name": store_name, "area": 100}
-        st.session_state["store_number"] += 1
-        st.rerun()
-    st.write(st.session_state.markers)
+        population = get_city_data(cities[city]["name"], "ab-residents", minio)
+        shops = get_city_data(cities[city]["name"], "shops", minio)
+        if st.button("Go"):
+            all_shops = hgm.add_user_shops(shops, result)
+            huff_model = hgm.huff_gravity_model(population, all_shops)
 
-    load_dotenv()
-    minio = s3fs.S3FileSystem(
-        key=os.getenv("S3_KEY"),
-        secret=os.getenv("S3_SECRET"),
-        endpoint_url=os.getenv("S3_ENDPOINT_URL"),
-    )
-    population = get_city_data(cities[city]["name"], "ab-residents", minio)
-    shops = get_city_data(cities[city]["name"], "shops", minio)
+            res = hgm.expected_number_of_consumers(huff_model)
+            res
 
-    if st.button("Go", type="primary"):
-        all_shops = hgm.add_user_shops(shops, st.session_state.markers)
-        huff_model = hgm.huff_gravity_model(population, all_shops)
-
-        res = hgm.expected_number_of_consumers(huff_model)
-        res
+    if out["last_clicked"]:
+        lat, lng = out["last_clicked"]["lat"], out["last_clicked"]["lng"]
+        geohash = gh.encode(lat, lng, 9)
+        store_name = f"Новый магазин {st.session_state['store_number']}"
+        if geohash not in st.session_state["markers"]:
+            st.session_state["markers"][geohash] = {
+                "name": store_name,
+                "store_area": 100,
+                "latitude": lat,
+                "longitude": lng,
+            }
+            st.session_state["store_number"] += 1
+            st.rerun()
 
 
 if __name__ == "__main__":
