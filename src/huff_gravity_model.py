@@ -23,7 +23,7 @@ def add_user_shops(city_shops: GeoDataFrame, user_input: DataFrame) -> GeoDataFr
 def huff_gravity_model(residents: GeoDataFrame, shops: GeoDataFrame) -> GeoDataFrame:
     """Используя гравитационную модель Хаффа, вычисляем какая часть жильцов каждого
     дома в зоне влияния тороговой точки пойдёт в неё за покупками."""
-    gdf = shops.sjoin(residents)
+    gdf = shops.sjoin(residents, how="left")
     gdf = gdf.drop("index_right", axis=1).reset_index(drop=True)
     gdf["dist"] = gdf.distance(gdf["coords"])
     gdf["dist"] = np.where(gdf["dist"] == 0, 30, gdf["dist"])
@@ -37,7 +37,7 @@ def expected_number_of_consumers(gdf: GeoDataFrame):
     """Определяем количество потенциальных покупателей для заданных
     пользователем магазинов."""
     gdf = gdf[gdf["shop_id"].isna()]
-    gdf["traffic"] = (gdf["INHAB"] * gdf["marketshare"]).astype("int")
+    gdf["traffic"] = (gdf["INHAB"] * gdf["marketshare"]).fillna(0).astype("int")
     gdf.to_crs("EPSG:4326", inplace=True)
     gdf = gdf.groupby(["name", "store_area"], as_index=False).agg({"traffic": "sum"})
     return gdf

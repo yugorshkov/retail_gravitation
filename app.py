@@ -14,7 +14,7 @@ from streamlit_folium import st_folium
 import src.huff_gravity_model as hgm
 
 st.set_page_config(page_title="Retail Gravitation", page_icon="🛒", layout="wide")
-st.title("🏪 Retail Gravitation Test App")
+st.title("🏪 Retail Gravitation")
 
 BUCKET = "retail-gravitation"
 
