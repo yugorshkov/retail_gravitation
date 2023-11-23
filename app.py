@@ -15,6 +15,7 @@ import src.huff_gravity_model as hgm
 
 st.set_page_config(page_title="Retail Gravitation", page_icon="🛒", layout="wide")
 st.title("🏪 Retail Gravitation")
+st.markdown("Сколько покупателей посетит Ваш магазин?")
 
 BUCKET = "retail-gravitation"
 
@@ -34,6 +35,20 @@ def get_city_data(city: str, data_type: str, _s3: s3fs.S3FileSystem) -> GeoDataF
     return gdf
 
 
+@st.cache_resource
+def get_remote_fs_session(
+    s3_key=os.getenv("S3_KEY"),
+    s3_secret=os.getenv("S3_SECRET"),
+    s3_endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+):
+    s3 = s3fs.S3FileSystem(
+        key=s3_key,
+        secret=s3_secret,
+        endpoint_url=s3_endpoint_url,
+    )
+    return s3
+
+
 def update_user_data():
     user_markers = list(st.session_state["markers"])
     edited_rows = st.session_state["user_input"]["edited_rows"]
@@ -47,28 +62,21 @@ def main():
         st.session_state["markers"] = {}
     if "store_number" not in st.session_state:
         st.session_state["store_number"] = 1
-
     load_dotenv()
-    minio = s3fs.S3FileSystem(
-        key=os.getenv("S3_KEY"),
-        secret=os.getenv("S3_SECRET"),
-        endpoint_url=os.getenv("S3_ENDPOINT_URL"),
-    )
-
+    minio = get_remote_fs_session()
     with open("cities.json") as f:
         cities = json.load(f)
-    city = st.selectbox("Выберите город:", cities)
+    col1, *unused_cols = st.columns(4)
+    city = col1.selectbox("Выберите город:", ["Краснодар"])  # пока только Краснодаре
     bounds = get_city_bounds(cities[city]["osm_id"])
     center = [bounds.centroid.y.iloc[0], bounds.centroid.x.iloc[0]]
 
     m = folium.Map(location=center, zoom_start=11)
-
     fg = folium.FeatureGroup(name="Markers")
     for marker in st.session_state["markers"]:
         lat, lng = gh.decode(marker)
         name = st.session_state["markers"][marker]["name"]
-        fg.add_child(folium.Marker(location=[lat, lng], popup=name))
-
+        fg.add_child(folium.Marker(location=[lat, lng], popup=name, tooltip=name))
     folium.TileLayer("cartodb positron", show=False).add_to(m)
     folium.GeoJson(
         bounds,
@@ -84,10 +92,10 @@ def main():
     ).add_to(m)
     folium.LayerControl().add_to(m)
 
-    col1, col2 = st.columns(2)
-    with col1:
+    col3, col4 = st.columns(2)
+    with col3:
         out = st_folium(m, width=725, feature_group_to_add=fg)
-    with col2:
+    with col4:
         df = pd.DataFrame(st.session_state["markers"].values())
         config = {
             "name": st.column_config.TextColumn("Название магазина", max_chars=20),
@@ -99,7 +107,7 @@ def main():
             df,
             use_container_width=True,
             hide_index=False,
-            column_order=['name', 'store_area'],
+            column_order=["name", "store_area"],
             column_config=config,
             key="user_input",
             on_change=update_user_data,
@@ -113,7 +121,6 @@ def main():
 
             res = hgm.expected_number_of_consumers(huff_model)
             res
-
     if out["last_clicked"]:
         lat, lng = out["last_clicked"]["lat"], out["last_clicked"]["lng"]
         geohash = gh.encode(lat, lng, 9)
