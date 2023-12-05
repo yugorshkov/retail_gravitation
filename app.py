@@ -15,8 +15,9 @@ import src.huff_gravity_model as hgm
 
 st.set_page_config(page_title="Retail Gravitation", page_icon="🛒", layout="wide")
 st.title("🏪 Retail Gravitation")
-st.markdown("Сколько покупателей посетит Ваш магазин?")
+st.markdown("Сколько покупателей будут посещать Ваш магазин?")
 
+load_dotenv()
 BUCKET = "retail-gravitation"
 
 
@@ -35,20 +36,6 @@ def get_city_data(city: str, data_type: str, _s3: s3fs.S3FileSystem) -> GeoDataF
     return gdf
 
 
-@st.cache_resource
-def get_remote_fs_session(
-    s3_key=os.getenv("S3_KEY"),
-    s3_secret=os.getenv("S3_SECRET"),
-    s3_endpoint_url=os.getenv("S3_ENDPOINT_URL"),
-):
-    s3 = s3fs.S3FileSystem(
-        key=s3_key,
-        secret=s3_secret,
-        endpoint_url=s3_endpoint_url,
-    )
-    return s3
-
-
 def update_user_data():
     user_markers = list(st.session_state["markers"])
     edited_rows = st.session_state["user_input"]["edited_rows"]
@@ -62,8 +49,11 @@ def main():
         st.session_state["markers"] = {}
     if "store_number" not in st.session_state:
         st.session_state["store_number"] = 1
-    load_dotenv()
-    minio = get_remote_fs_session()
+    minio = s3fs.S3FileSystem(
+        key=os.getenv("S3_KEY"),
+        secret=os.getenv("S3_SECRET"),
+        endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+    )
     with open("cities.json") as f:
         cities = json.load(f)
     col1, *unused_cols = st.columns(4)
@@ -76,7 +66,7 @@ def main():
     for marker in st.session_state["markers"]:
         lat, lng = gh.decode(marker)
         name = st.session_state["markers"][marker]["name"]
-        fg.add_child(folium.Marker(location=[lat, lng], popup=name, tooltip=name))
+        fg.add_child(folium.Marker(location=[lat, lng], tooltip=name))
     folium.TileLayer("cartodb positron", show=False).add_to(m)
     folium.GeoJson(
         bounds,
@@ -91,10 +81,13 @@ def main():
         },
     ).add_to(m)
     folium.LayerControl().add_to(m)
-
     col3, col4 = st.columns(2)
     with col3:
-        out = st_folium(m, width=725, feature_group_to_add=fg)
+        st.info(
+        """Выберите место для магазина в пределах города,
+            а затем укажите площадь и название 👉"""
+    )
+        out = st_folium(m, width=875, feature_group_to_add=fg)
     with col4:
         df = pd.DataFrame(st.session_state["markers"].values())
         config = {
@@ -106,7 +99,7 @@ def main():
         result = st.data_editor(
             df,
             use_container_width=True,
-            hide_index=False,
+            hide_index=True,
             column_order=["name", "store_area"],
             column_config=config,
             key="user_input",
@@ -115,12 +108,23 @@ def main():
 
         population = get_city_data(cities[city]["name"], "ab-residents", minio)
         shops = get_city_data(cities[city]["name"], "shops", minio)
-        if st.button("Go"):
+        if st.button("Оценить посещаемость", type="primary"):
             all_shops = hgm.add_user_shops(shops, result)
             huff_model = hgm.huff_gravity_model(population, all_shops)
+            traffic = hgm.expected_number_of_consumers(huff_model)
+            st.session_state["traffic"] = traffic
+        if "traffic" in st.session_state:
+            st.dataframe(
+                st.session_state["traffic"].style.highlight_max(axis=0, subset=['traffic'], color='yellowgreen'),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "name": "Название магазина",
+                    "store_area": "Площадь, м2",
+                    "traffic": "Трафик, чел.",
+                },
+            )
 
-            res = hgm.expected_number_of_consumers(huff_model)
-            res
     if out["last_clicked"]:
         lat, lng = out["last_clicked"]["lat"], out["last_clicked"]["lng"]
         geohash = gh.encode(lat, lng, 9)
