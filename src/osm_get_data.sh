@@ -7,7 +7,7 @@ city_id=$4
 echo Download OpenStreetMap data for ${region^} Federal District...
 url="http://download.geofabrik.de/russia/$region-fed-district-latest.osm.pbf"
 mkdir -p $local_prefix
-wget $url -P $local_prefix -N
+wget -q $url -P $local_prefix -N
 
 echo Creating extract for ${city_name^} city...
 region_osm_data=$local_prefix/$region-fed-district-latest.osm.pbf

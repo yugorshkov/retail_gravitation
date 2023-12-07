@@ -100,7 +100,7 @@ def calculate_stores_area(filename: str) -> GeoDataFrame:
     return store_areas
 
 
-@flow(name="Retail Gravitation")
+@flow(name="retail_gravitation_etl")
 def main():
     """Основной поток получения, обработки и загрузки данных в хранилище"""
     load_dotenv()
@@ -128,4 +128,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main.serve(name="test-dep")
+    main.serve(name="docker-deployment")

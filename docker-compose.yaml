@@ -1,0 +1,6 @@
+version: '3'
+services:
+  rgdep:
+    image: laggerkrd/retail_gravitation
+    env_file:
+      - .env
