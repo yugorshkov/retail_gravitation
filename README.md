@@ -2,11 +2,13 @@
 Прогнозируем поток покупателей торговой точки с помощью гравитационной модели Хаффа.
 
 <h3 align="center">
-    🛒 <a href="https://retail-gravitation.streamlit.app/">Попробовать</a> 🛍
+    🛒 <a href="https://retail-gravitation.streamlit.app/">Попробовать</a> 🛒 🛍
 </h3>
 
+---
+
 <p align="center">
-    <a href="https://github.com/DahnJ/H3-Pandas"><img src="https://i.imgur.com/9rpbI4i.gif" alt="example usage" width="720"></a>
+    <img src="https://i.imgur.com/UxFTW2N.gif">
 </p>
 
 
