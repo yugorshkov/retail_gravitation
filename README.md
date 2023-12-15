@@ -11,6 +11,15 @@
     <img src="https://i.imgur.com/UxFTW2N.gif">
 </p>
 
+<details>
+    <summary>Схема сервиса</summary>
+
+<p align="center">
+    <img src="https://i.imgur.com/RKirAN5.png"> 
+</p>
+
+</details>
+
 ## Использование
 Сервис оценивает проходимость нового магазина на основе данных о площади, расстоянии до потенциального покупателя, численности населения и привлекательности существующих магазинов. Получить расчёт можно с помощью приложения:
 - Перейдите по следующей ссылке: [Retail Gravitation UI](https://retail-gravitation.streamlit.app/)
