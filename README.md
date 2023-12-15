@@ -29,4 +29,7 @@
 - Площадью магазина считаем часть площади здания, в котором он располагается.
 - Численность населения оцениваем через количество квартир/этажей в жилых домах.
 
-Подробнее о гравитационной модели Хаффа можно почитать на [GISGeography](https://gisgeography.com/huff-gravity-model/).
+---
+GISGeography, [Huff Gravity Model: Store Customer Predictions](https://gisgeography.com/huff-gravity-model/)  
+The Geography of Transport Systems, [Huff’s Law](https://transportgeography.org/contents/methods/market-area-analysis/huff-law-retail/)  
+Корпоративный менеджмент, [Пространственный анализ предпочтений покупателей розничных магазинов на территории города](https://www.cfin.ru/press/practical/2007-10/01.shtml)
